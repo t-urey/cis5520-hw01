@@ -2,6 +2,8 @@ module HW01 where
 
 import Prelude hiding (all, concat, reverse, takeWhile, zip, (++))
 
+-- | Thomas Urey, Homework 1, 09/11/2024
+
 --------------------------------------------------------------------------------
 -- Problem (Good Style)
 --------------------------------------------------------------------------------
@@ -13,12 +15,7 @@ import Prelude hiding (all, concat, reverse, takeWhile, zip, (++))
 -- >>> abc False True True
 -- False
 abc x y z =
-  if x
-    then
-      if y
-        then True
-        else if (x && z) then True else False
-    else False
+  x && (y || z)
 
 -- >>> arithmetic ((1,2),3) ((4,5),6)
 -- (-3,6,-3)
@@ -26,43 +23,30 @@ abc x y z =
 -- (7,-14,7)
 arithmetic :: ((Int, Int), Int) -> ((Int, Int), Int) -> (Int, Int, Int)
 arithmetic x1 x2 =
-  let a = fst (fst x1)
-   in let b = snd (fst x1)
-       in let c = snd x1
-           in let d = fst (fst x2)
-               in let e = snd (fst x2)
-                   in let f = snd x2
-                       in ( ( ( ( ((b * f) - (c * e)),
-                                  ( ( c
-                                        * d
-                                    )
-                                      - (a * f)
-                                  ),
-                                  ((a * e) - (b * d))
-                                )
-                              )
-                            )
-                          )
+  let ((a, b), c) = x1 in
+    let ((d, e), f) = x2 in
+      ((b * f) - (c * e), (c * d) - (a * f), (a * e) - (b * d))
 
 -- >>> reverse [3,2,1]
 -- [1,2,3]
-reverse l = reverseAux l []
+reverse lst = reverseAux lst []
   where
-    reverseAux l acc =
-      if null l
-        then acc
-        else reverseAux (tail l) (head l : acc)
+    reverseAux lst reversed =
+      case lst of
+        [] -> reversed
+        x:xs -> reverseAux xs (x:reversed)
 
 -- >>> zip "abc" [True,False,True]
 -- [('a',True),('b',False),('c',True)]
 -- >>> zip [1,2] "a"
 -- [(1,'a')]
-zip xs ys = g 0 xs ys
+zip xs ys = zipAux xs ys
   where
-    g n xs ys =
-      if n == length xs || n == length ys
-        then []
-        else (xs !! n, ys !! n) : g (n + 1) xs ys
+    zipAux lstA lstB =
+      case (lstA, lstB) of
+        (a:as, b:bs) -> (a, b):zipAux as bs
+        _ -> []
+
 
 --------------------------------------------------------------------------------
 -- Problem (List recursion)
@@ -76,7 +60,10 @@ zip xs ys = g 0 xs ys
 -- >>> minimumMaybe []
 -- Nothing
 minimumMaybe :: [Int] -> Maybe Int
-minimumMaybe = undefined
+minimumMaybe [] = Nothing
+minimumMaybe (x:xs) = case minimumMaybe xs of
+  Nothing -> Just x
+  Just y -> Just (min x y)
 
 -- | The 'startsWith' function takes two strings and returns 'True'
 -- iff the first is a prefix of the second.
@@ -88,7 +75,11 @@ minimumMaybe = undefined
 -- >>> "Helo" `startsWith` "Hello World!"
 -- False
 startsWith :: String -> String -> Bool
-startsWith = undefined
+startsWith needle haystack = case (needle, haystack) of
+  ([], []) -> True
+  ([], _) -> True
+  (_, []) -> False
+  (n:ns, h:hs) -> n == h && startsWith ns hs
 
 -- | The 'isSubsequenceOf' function takes two strings and returns 'True'
 -- when all characters in the first are contained within the second, in order.
@@ -102,7 +93,13 @@ startsWith = undefined
 -- >>> "Wello" `isSubsequenceOf` "Hello World!"
 -- False
 isSubsequenceOf :: String -> String -> Bool
-isSubsequenceOf = undefined
+isSubsequenceOf needle haystack = case (needle, haystack) of
+  ([], []) -> True
+  ([], _) -> True
+  (_, []) -> False
+  (n:ns, h:hs) -> if n == h
+    then isSubsequenceOf ns hs
+    else isSubsequenceOf needle hs
 
 -- | The 'countSub' function returns the number of (potentially overlapping)
 -- occurrences of a substring sub found in a string.
@@ -114,7 +111,11 @@ isSubsequenceOf = undefined
 -- >>> countSub "" "aaac"
 -- 5
 countSub :: String -> String -> Int
-countSub = undefined
+countSub needle haystack =
+  let isPrefix = (if startsWith needle haystack then 1 else 0) in
+    case haystack of
+      [] -> isPrefix
+      h:hs -> isPrefix + countSub needle hs
 
 -- | The 'transpose' function transposes the rows and columns of its argument.
 -- If the inner lists are not all the same length, then the extra elements
@@ -133,7 +134,16 @@ countSub = undefined
 
 -- (WARNING: this one is tricky!)
 transpose :: [[a]] -> [[a]]
-transpose = undefined
+transpose matrix =
+  let exploded = map explode matrix in
+    case exploded of
+      [] -> []
+      e:es -> foldr join e es
+  where
+    explode [] = []
+    explode (x:xs) = [x]:explode xs
+    join l1 l2 =
+      map (\(e1, e2) -> concat [e2, e1]) (zip l1 l2)
 
 --------------------------------------------------------------------------------
 -- Problem (Defining higher-order functions)
@@ -150,7 +160,10 @@ transpose = undefined
 -- >>> takeWhile (< 0) [1,2,3]
 -- []
 takeWhile :: (a -> Bool) -> [a] -> [a]
-takeWhile = undefined
+takeWhile pred lst =
+  case lst of
+    [] -> []
+    x:xs -> if pred x then x:takeWhile pred xs else []
 
 -- | `find pred lst` returns the first element of the list that
 -- satisfies the predicate. Because no element may do so, the
@@ -161,7 +174,10 @@ takeWhile = undefined
 -- >>> find odd [0,2,4,6]
 -- Nothing
 find :: (a -> Bool) -> [a] -> Maybe a
-find = undefined
+find pred lst =
+  case lst of
+    [] -> Nothing
+    x:xs -> if pred x then Just x else find pred xs
 
 -- | `all pred lst` returns `False` if any element of `lst`
 -- fails to satisfy `pred` and `True` otherwise.
@@ -169,7 +185,7 @@ find = undefined
 -- >>> all odd [1,2,3]
 -- False
 all :: (a -> Bool) -> [a] -> Bool
-all = undefined
+all pred lst = foldr (\x acc -> pred x && acc) True lst
 
 -- | `map2 f xs ys` returns the list obtained by applying `f` to
 -- to each pair of corresponding elements of `xs` and `ys`. If
@@ -184,7 +200,10 @@ all = undefined
 --
 -- NOTE: `map2` is called `zipWith` in the Prelude
 map2 :: (a -> b -> c) -> [a] -> [b] -> [c]
-map2 = undefined
+map2 combine lstA lstB =
+  case (lstA, lstB) of
+    (a:as, b:bs) -> combine a b:map2 combine as bs
+    _ -> []
 
 -- | Apply a partial function to all the elements of the list,
 -- keeping only valid outputs.
@@ -194,7 +213,11 @@ map2 = undefined
 --
 -- (where `root` is defined below.)
 mapMaybe :: (a -> Maybe b) -> [a] -> [b]
-mapMaybe = undefined
+mapMaybe partial [] = []
+mapMaybe partial (x:xs) =
+  case partial x of
+    Just v -> v:mapMaybe partial xs
+    Nothing -> mapMaybe partial xs
 
 root :: Double -> Maybe Double
 root d = if d < 0.0 then Nothing else Just $ sqrt d
@@ -208,7 +231,9 @@ root d = if d < 0.0 then Nothing else Just $ sqrt d
 -- >>> concat [[1,2,3],[4,5,6],[7,8,9]]
 -- [1,2,3,4,5,6,7,8,9]
 concat :: [[a]] -> [a]
-concat = undefined
+concat lsts = foldr pairwiseConcat [] lsts
+  where
+    pairwiseConcat lstA lstB = foldr (:) lstB lstA
 
 -- | The 'startsWithHO' function takes two strings and returns 'True'
 -- iff the first is a prefix of the second. This is the same as `startsWith` above
@@ -220,7 +245,12 @@ concat = undefined
 -- >>> "Hello" `startsWithHO` "Wello Horld!"
 -- False
 startsWithHO :: String -> String -> Bool
-startsWithHO = undefined
+startsWithHO needle haystack = foldr compare (const True) needle haystack
+  where
+    compare needleBit compareRest haystackPart =
+      case haystackPart of
+        [] -> False
+        h:hs -> (needleBit == h) && compareRest hs
 
 -- INTERLUDE: para
 
@@ -235,8 +265,7 @@ para f b (x : xs) = f x xs (para f b xs)
 -- >>> tails "abc"
 -- ["abc","bc","c",""]
 tails :: [a] -> [[a]]
-tails [] = [[]]
-tails (x : xs) = (x : xs) : tails xs
+tails lst = para (\x tls acc -> (x:tls):acc) [[]] lst
 
 -- | The 'countSubHO' function returns the number of (potentially overlapping)
 -- occurrences of a substring sub found in a string.
@@ -246,4 +275,8 @@ tails (x : xs) = (x : xs) : tails xs
 -- >>> countSubHO "" "aaac"
 -- 5
 countSubHO :: String -> String -> Int
-countSubHO = undefined
+countSubHO needle haystack =
+  foldr (
+    (\x acc -> x + acc) . 
+    (\hsPart -> if startsWithHO needle hsPart then 1 else 0)
+    ) 0 (tails haystack)
